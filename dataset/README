@@ -1,0 +1,39 @@
+=====================================
+ELF OpenGo Professional Game Analysis
+=====================================
+
+We've used ELF OpenGo to analyze almost every professional game of Go ever played (~100k games drawn from GoGoD). We then use this analysis to evaluate the quality of professional players on a per-move basis, and not just based on who won the game. You can use our visualization tool (https://dl.fbaipublicfiles.com/elfopengo/analysis/www/index.html) to compare players across eras, and to view humanity's progress in the game across time.
+
+Importantly, you can see humanity's improvement in the game in 2016, when Go AIs came onto the scene and taught humans to play at a higher level. Also notice the harm that the large historical event of WWII did to the game.
+
+How to understand the SGF commentaries
+======================================
+
+The UI is a tool to visualize aggregation of statistics of human games. But you can also zoom-in to the analysis for an individual game, which we provide as a commentary in SGF format. The raw data files are available at:
+
+- High-level analysis: https://dl.fbaipublicfiles.com/elfopengo/analysis/data/gogod_commentary_analysis.csv
+- Annotated SGFs: https://dl.fbaipublicfiles.com/elfopengo/analysis/data/gogod_commentary_sgfs.gzip
+
+In every move of the game, we use ELF to find the best moves and create a tree of recommendations. We also comment with two numbers: the probability that black is winning, and the number of rollouts that ELF used to analyze that position. The more rollouts, the better ELF thinks a move is.
+
+In the SGF, the human move is always the main line. We mark ELF’s favorite move with an exclamation point. So, if the human move is annotated with an exclamation point, then ELF thinks it is the best move. When not in the main line, a) is always the preferred move, and you will not see an exclamation point.
+
+We retain the tree of recommendations that ELF thinks are pertinent. Specifically, we keep every move in the tree that has at least 5% of the rollouts. This means we show you a tree of every move that was considered by ELF at least 5% of the time.
+
+ELF does not have support for dynamic komi, but we still want to bring you historical analysis. So all games are analyzed as if the komi were 7.5. For games with alternate komis, you should discount the evaluations of who is winning, though the move suggestions are still high-quality.
+
+Selfplay analysis
+=================
+
+Besides analyses of professional games, we also have analyses of the selfplays generated throughout our training process:
+
+- High-level analysis: https://dl.fbaipublicfiles.com/elfopengo/analysis/data/varied_selfplay_commentary_analysis.csv
+- Annotated SGFs: s3://dl.fbaipublicfiles.com/elfopengo/analysis/data/varied_selfplay_commentary_sgfs.gzip
+
+Varied model analysis
+=====================
+
+Finally, we have analyses of the GoGoD dataset from multiple intermediate models from our training process:
+
+- High-level analysis: https://dl.fbaipublicfiles.com/elfopengo/analysis/data/varied_models_commentary_analysis.csv
+- Annotated SGFs: s3://dl.fbaipublicfiles.com/elfopengo/analysis/data/varied_models_commentary_sgfs.gzip
