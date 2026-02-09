@@ -3,7 +3,7 @@ import torch
 from sgfmill import boards, ascii_boards 
 from models.go_cnn import GoCNN  
 
-MODEL_PATH = "output\go_model_step.pth"  
+MODEL_PATH = "output\go_model_step_GoCNN_v2.pth"  
 
 BOARD_SIZE = 19                  
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"

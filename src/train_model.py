@@ -6,13 +6,14 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 from torch.cuda.amp import GradScaler, autocast
-from models.go_cnn import GoCNN
+from models.go_cnn import GoCNN, GoResNet, GoCNN_p
 
 CHUNK_DIR        = 'E:/go_dataset'
-SAVE_MODEL_PATH  = 'output/go_model_step.pth'
+SAVE_MODEL_PATH  = 'D:\\01_EGGER\\program\\python\\simple-inteligent-go\\output\\go_model_step_GoCNN_p.pth'
+LOG_PATH         = 'D:\\01_EGGER\\program\\python\\simple-inteligent-go\\output\\log_resnet.txt'
 BATCH_SIZE       = 32
-EPOCHS_PER_CHUNK = 2
-LEARNING_RATE    = 1e-4
+EPOCHS_PER_CHUNK = 3
+LEARNING_RATE    = 2e-4
 WEIGHT_DECAY     = 1e-5
 GRADIENT_ACCUMULATION_STEPS = 2
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -58,7 +59,7 @@ def get_sorted_chunk_files(chunk_dir):
 
 def train_per_chunk():
     print(f'初始化模型 {DEVICE}')
-    model = GoCNN().to(DEVICE)
+    model = GoCNN_p().to(DEVICE)
     optimizer = optim.AdamW(
         model.parameters(),
         lr=LEARNING_RATE,
@@ -67,6 +68,7 @@ def train_per_chunk():
 
      # 学习率调度：基于总训练步数（所有chunk累积）
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=8, gamma=0.5)  # 每8个chunk减半
+    #scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=16, eta_min=1e-6)
     loss_fn = nn.CrossEntropyLoss()
     scaler = GradScaler()  # 混合精度训练
 
@@ -129,13 +131,17 @@ def train_per_chunk():
                         print(f"  数据集编号: {chunk_idx+1} | Batch {batch_idx:>4} | Loss: {chunk_total_loss:.4f}")
             
             # 当前chunk训练完成
-            chunk_avg_loss = chunk_total_loss / len(dataloader)
+            chunk_avg_loss = chunk_total_loss / (len(dataloader) * EPOCHS_PER_CHUNK)
             print(f'第 {chunk_idx+1} 个数据集训练完成   平均Loss: {chunk_avg_loss:.4f}')
+            with open(LOG_PATH, 'a') as f:
+                print(f'第 {chunk_idx+1} 个数据集训练完成   平均Loss: {chunk_avg_loss:.4f}', file=f)
 
             # 更新学习率
             scheduler.step()
             current_lr = optimizer.param_groups[0]["lr"]
             print(f'当前学习率：{current_lr:.8f}')
+            with open(LOG_PATH, 'a') as f:
+                print(f'当前学习率：{current_lr:.8f}', file=f)
 
             # 保存阶段性模型
             if chunk_avg_loss < best_loss:
@@ -151,6 +157,8 @@ def train_per_chunk():
         
         except Exception as e:
             print(f'训练出错: {e}')
+            with open(LOG_PATH, 'a') as f:
+                print(f'训练出错: {e}', file=f)
             continue
 
         finally:  # 释放资源
