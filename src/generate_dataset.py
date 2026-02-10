@@ -7,7 +7,7 @@ import math
 # 有效训练样本数：16133673
 # 数据保存路径：E:\go_dataset\go_dataset.npz
 
-sgf_dataset_dir  = 'data\gogod_commentary_sgfs'
+sgf_dataset_dir  = 'data\gogod_commentary_sgfs\gogod_commentary'
 SAVE_ROOT_PATH   = 'E:/go_dataset'
 CHUNK_SAMPLE_NUM = 500000    # 每50万个样本写入一个npz文件
 
