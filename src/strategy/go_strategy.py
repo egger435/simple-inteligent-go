@@ -38,7 +38,7 @@ def model_pred(cur_board: boards.Board, cur_color: chr):
 
     def _is_legal(pos):
         '''检查合法落子'''
-        occupied_points = cur_board.list_occupied_points()
+        occupied_points, _ = cur_board.list_occupied_points()
         for point in occupied_points:
             if pos == point[1]:
                 return False

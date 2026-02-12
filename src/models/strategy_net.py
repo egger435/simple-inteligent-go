@@ -1,12 +1,11 @@
+'''策略选择网络'''
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-TRAIN_DROPOUT_RATE = 0.2
-
 class GoCNN(nn.Module):
     '''简易三层卷积网络'''
-    def __init__(self, dropout_rate=TRAIN_DROPOUT_RATE):
+    def __init__(self, dropout_rate=0.2):
         super().__init__()
 
         # 三层特征提取卷积

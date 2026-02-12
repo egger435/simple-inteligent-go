@@ -1,5 +1,6 @@
-test_demo
+_test_demo
 data/gogod_commentary_sgfs
-/src/models/__pycache__
+__pycache__
 /output
 /src/__pycache__
+
