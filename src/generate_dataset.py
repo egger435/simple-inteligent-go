@@ -1,8 +1,5 @@
 import numpy as np
 import os
-from sgfmill import boards
-import strategy.go_strategy as go_sg
-import value.go_value as go_val
 from common import *
 
 def generate_strategy_model_dataset():

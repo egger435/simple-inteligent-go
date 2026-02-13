@@ -3,4 +3,5 @@ data/gogod_commentary_sgfs
 __pycache__
 /output
 /src/__pycache__
+/src/strategy/__pycache__
 

@@ -1,6 +1,7 @@
 import os
 from sgfmill import sgf, boards
 import models.strategy_net as sg
+import models.value_net as va
 import numpy as np
 
 # common =========================================================================================
@@ -55,7 +56,14 @@ SG_WEIGHT_DECAY     = 1e-5
 SG_GRADIENT_ACCUMULATION_STEPS = 2
 
 # 价值网络模型训练===================================
-
+VA_DATASET_PATH     = 'E:/go_dataset/value_net_dataset.npz'
+'''价值网络数据集位置'''
+VA_SAVE_MODEL_PATH  = 'D:/01_EGGER/program/python/simple-inteligent-go/output/go_final_val_model_1_2.pth'
+'''价值网络模型数据保存位置'''
+VA_BATCH_SIZE       = 128
+VA_LEARNING_RATE    = 1e-3
+VA_WEIGHT_DECAY     = 1e-4
+VA_PATIENCE         = 25
 # ================================================================================================
 
 
@@ -67,6 +75,15 @@ STRATEGY_MODEL      = sg.GoCNN_p().to(DEVICE)
 '''策略选择网络模型选择'''
 TOP_K               = 3   
 '''最优候选落子位置个数'''
+# ================================================================================================
+
+
+
+# 价值判断相关 ====================================================================================
+VALUE_MODEL_PATH = 'output\go_final_val_model_1_2.pth'
+'''终局价值网络模型数据位置'''
+VALUE_MODEL      = va.GoValueNet().to(DEVICE)
+'''终局价值网络模型选择'''
 # ================================================================================================
 
 
@@ -215,6 +232,25 @@ def get_final_from_sgf(sgf_content):
         final_val = None
 
     return board_with_komi_matrix, final_val
+
+def get_final_board_from_sgf(sgf_content):
+    '''根据sgf文件字节流读取终局信息, 返回终局棋盘和贴目数以及胜利方'''
+    game = sgf.Sgf_game.from_bytes(sgf_content)
+    main_sequence = list(game.get_main_sequence())
+
+    winner = game.get_winner()
+    komi = game.get_komi()
+
+    board = boards.Board(BOARD_SIZE)
+    for idx, node in enumerate(main_sequence, 1):
+        move = node.get_move()
+        if not move:
+            continue
+        color, pos = move
+        if pos:
+            board.play(pos[0], pos[1], color)
+    
+    return board, komi, winner
 
 def link_next_move(step_records):
     '''
