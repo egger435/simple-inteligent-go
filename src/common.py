@@ -22,7 +22,7 @@ GAME_KOMI  = 0.0
 
 
 # 数据集生成相关 ==================================================================================
-SGF_DATASET_DIR      = 'data\gogod_commentary_sgfs\gogod_commentary'
+SGF_DATASET_DIR      = 'data\gogod_commentary_sgfs'
 '''原始sgf数据位置'''
 
 # 策略网络数据集====================================
@@ -32,28 +32,39 @@ SG_CHUNK_SAMPLE_NUM  = 500000
 '''每50万个样本写入一个策略网络npz文件'''
 
 # 终局价值网络数据集================================
-VA_DATASET_SAVE_PATH      = 'E:/go_dataset/value_net_dataset.npz'  
+VA_DATASET_SAVE_PATH      = 'E:/go_dataset/value_net_dataset_n.npz'  
 '''价值网络数据集保存位置'''
 # ================================================================================================
 
 
 
 # 模型训练相关 ====================================================================================
-LOG_PATH            = 'D:/01_EGGER/program/python/simple-inteligent-go/output/log_resnet.txt'
+LOG_PATH             = 'D:/01_EGGER/program/python/simple-inteligent-go/output/log_resnet.txt'
 '''训练日志的保存位置'''
 
 # 策略网络模型训练===================================
-SG_CHUNK_DIR        = 'E:/go_dataset/strategy_net' 
+SG_CHUNK_DIR          = 'E:/go_dataset/strategy_net' 
 '''分片数据集位置'''
-SG_VALID_CHUNK_DIR  = 'E:/go_dataset/strategy_net/valid_chunk.npz' 
+SG_VALID_CHUNK_DIR    = 'E:/go_dataset/strategy_net/valid_chunk.npz' 
 '''策略网络训练验证集位置'''
-SG_SAVE_MODEL_PATH  = 'D:/01_EGGER/program/python/simple-inteligent-go/output/go_strategy_model.pth'
+SG_SAVE_MODEL_PATH    = 'D:/01_EGGER/program/python/simple-inteligent-go/output/go_strategy_model_1_2.pth'
 '''策略网络模型数据保存位置'''
-SG_BATCH_SIZE       = 32
-SG_EPOCHS_PER_CHUNK = 3
-SG_LEARNING_RATE    = 1e-4
-SG_WEIGHT_DECAY     = 1e-5
+SG_BEST_MODEL_PATH    = 'D:/01_EGGER/program/python/simple-inteligent-go/output/go_strategy_model_t_b.pth'
+'''策略网络最佳模型保存位置'''
+SG_VALID_INTERNAL     = 1
+'''每训练几个chunk验证一次'''
+SG_SCHEDULER_PATIENCE = 5
+'''学习率调度容忍次数'''
+SG_SCHEDULER_FACTOR   = 0.5
+'''学习率衰减系数'''
+SG_NUM_GLOBAL_EPOCHS  = 3
+'''全局epoch数'''
+SG_BATCH_SIZE         = 32
+SG_EPOCHS_PER_CHUNK   = 3
+SG_LEARNING_RATE      = 1e-4
+SG_WEIGHT_DECAY       = 1e-5
 SG_GRADIENT_ACCUMULATION_STEPS = 2
+SG_GRADIENT_CLIP = 1.0
 
 # 价值网络模型训练===================================
 VA_DATASET_PATH     = 'E:/go_dataset/value_net_dataset.npz'
@@ -63,13 +74,13 @@ VA_SAVE_MODEL_PATH  = 'D:/01_EGGER/program/python/simple-inteligent-go/output/go
 VA_BATCH_SIZE       = 128
 VA_LEARNING_RATE    = 1e-3
 VA_WEIGHT_DECAY     = 1e-4
-VA_PATIENCE         = 25
+VA_PATIENCE         = 35
 # ================================================================================================
 
 
 
 # 策略选择相关 ====================================================================================
-STRATEGY_MODEL_PATH = "output\go_strategy_model.pth"
+STRATEGY_MODEL_PATH = "output\go_strategy_model_1_1.pth"
 '''策略网络模型数据位置'''
 STRATEGY_MODEL      = sg.GoCNN_p().to(DEVICE)
 '''策略选择网络模型选择'''
@@ -91,7 +102,7 @@ VALUE_MODEL      = va.GoValueNet().to(DEVICE)
 # 落子算法相关 ====================================================================================
 MAX_SEARCH_DEEPTH  = 3
 '''MiniMax最大搜索深度'''
-MC_START_THRESHOLD = 50
+MC_START_THRESHOLD = 150
 '''蒙特卡洛推演启动阈值'''
 MC_SIMULATIONS     = 10
 '''蒙特卡洛推演次数'''

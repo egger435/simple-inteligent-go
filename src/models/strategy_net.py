@@ -1,7 +1,12 @@
 '''策略选择网络'''
+import sys
+import os
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from common import *
 
 class GoCNN(nn.Module):
     '''简易三层卷积网络'''
@@ -111,7 +116,76 @@ class GoCNN_p(nn.Module):
         x = self.fc2(x)
 
         return x
+
+class TransformerEncoderBlock(nn.Module):
+    def __init__(self, d_model, num_heads, ffn_dim):
+        super().__init__()
+        self.norm1 = nn.LayerNorm(d_model)
+        self.attn = nn.MultiheadAttention(d_model, num_heads, batch_first=True)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.ffn = nn.Sequential(
+            nn.Linear(d_model, ffn_dim),
+            nn.GELU(),
+            nn.Linear(ffn_dim, d_model)
+        )
     
+    def forward(self, x):
+        attn_out, _ = self.attn(self.norm1(x), self.norm1(x), self.norm1(x))
+        x = x + attn_out
+        x = x + self.ffn(self.norm2(x))
+        return x
+    
+class GoCNN_t(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.input_conv = nn.Sequential(
+            nn.Conv2d(2, 128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU()
+        )
+        self.res_blocks = nn.Sequential(
+            *[ResBlock(128, 128) for _ in range(8)]
+        )
+
+        self.pos_embedding_x = nn.Parameter(torch.zeros(19, 64))
+        self.pos_embedding_y = nn.Parameter(torch.zeros(19, 64))
+
+        self.trans_encoder = nn.ModuleList([
+            TransformerEncoderBlock(128, 8, 256) for _ in range(4)
+        ])
+        self.final_norm = nn.LayerNorm(128)
+
+        self.policy_linear = nn.Linear(128, 1)
+        self.pass_logit = nn.Parameter(torch.zeros(1))
+    
+    def forward(self, x):
+        B, C, H, W = x.shape
+
+        x = self.input_conv(x)
+        x = self.res_blocks(x)
+
+        x_seq = x.flatten(2).transpose(1, 2)
+
+        x_coords = torch.arange(H, device=x.device).repeat_interleave(W)
+        y_coords = torch.arange(W, device=x.device).repeat(H)
+        pos_x = self.pos_embedding_x[x_coords]
+        pos_y = self.pos_embedding_y[y_coords]
+        pos_emb = torch.cat([pos_x, pos_y], dim=-1).unsqueeze(0)
+        x_seq = x_seq + pos_emb
+
+        for layer in self.trans_encoder:
+            x_seq = layer(x_seq)
+        x_seq = self.final_norm(x_seq)
+
+        mov_logits = self.policy_linear(x_seq).squeeze(-1)
+
+        pass_logits = self.pass_logit.expand(B, 1)
+
+        policy_logits = torch.cat([mov_logits, pass_logits], dim=1)
+        return policy_logits
+
+
 class AlphaCNN(nn.Module):
     '''AlphaGo同款卷积网络'''
     def __init__(self, NUM_RES_BLOCKS=12):
@@ -154,7 +228,7 @@ class AlphaCNN(nn.Module):
 
 
 if __name__ == "__main__":
-    model = AlphaCNN()
+    model = GoCNN_t()
     print(model)
     print(f'模型参数数量: {sum(p.numel() for p in model.parameters()):,} 个')
 

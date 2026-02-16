@@ -80,14 +80,35 @@ class GoValuePredictor:
         return (b_MCR_val, w_MCR_val), (b_win_rate, 1 - b_win_rate)
 
 if __name__ == '__main__':
-    test_sgf_path = "data\gogod_commentary_sgfs\gogod_commentary\\varied_selfplay_commentary.backup\\60\985.sgf"
-    with open(test_sgf_path, 'rb') as f:
-        sgf_content = f.read()
+    total_samples = correct_samples = 0
     value_predictor = GoValuePredictor()
-    board, komi, winner = get_final_board_from_sgf(sgf_content)
-    print(ascii_boards.render_board(board))
-    value = value_predictor.get_monte_carlo_rollout_value(board, 'b', komi)
+    for root, dirs, files in os.walk("D:\\02_EdgeDownload\\varied_models_commentary_sgfs\\varied_models_all"):
+        for file in files:
+            if not file.endswith('.sgf'):
+                continue
+            total_samples += 1
+            sgf_path = os.path.join(root, file)
+            with open(sgf_path, 'rb') as f:
+                sgf_content = f.read()
+            board, komi, winner = get_final_board_from_sgf(sgf_content)
+            value = value_predictor.predict_value(board, komi)
+            if (value[0] > value[1] and winner == 'b') or (value[0] < value[1] and winner == 'w'):
+                correct_samples += 1
+            print(value, winner)
+            if total_samples == 10000:
+                print(f'acc: {(correct_samples / total_samples):.4f}')
+                exit()
+    
     
 
-    print(value, winner)
-    print(ascii_boards.render_board(board))
+    # test_sgf_path = "D:\\02_EdgeDownload\\varied_models_commentary_sgfs\\varied_models_all\save-0.bin\\2011-05-03s.sgf"
+    # with open(test_sgf_path, 'rb') as f:
+    #     sgf_content = f.read()
+    # value_predictor = GoValuePredictor()
+    # board, komi, winner = get_final_board_from_sgf(sgf_content)
+    # print(ascii_boards.render_board(board))
+    # value = value_predictor.predict_value(board, komi)
+    
+
+    # print(value, winner)
+    # print(ascii_boards.render_board(board))

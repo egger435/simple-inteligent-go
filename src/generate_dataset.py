@@ -63,7 +63,7 @@ def generate_strategy_model_dataset():
                     inputs_np = np.stack([boards_np, players_np], axis=1)
                     labels_np = np.array(global_labels, dtype=np.int64)
                     
-                    np.savez(
+                    np.savez_compressed(
                         chunk_path,
                         inputs=inputs_np,
                         labels=labels_np,
@@ -90,7 +90,7 @@ def generate_strategy_model_dataset():
         inputs_np = np.stack([boards_np, players_np], axis=1)
         labels_np = np.array(global_labels, dtype=np.int64)
         
-        np.savez(chunk_path, inputs=inputs_np, labels=labels_np)
+        np.savez_compressed(chunk_path, inputs=inputs_np, labels=labels_np)
         print(f"保存最后一批拆分文件：{chunk_path} | 样本数：{len(inputs_np)}")
         
         global_boards.clear()
@@ -151,3 +151,4 @@ def generate_final_val_model_dataset():
 
 if __name__ == "__main__":
     generate_final_val_model_dataset()
+    # generate_strategy_model_dataset()

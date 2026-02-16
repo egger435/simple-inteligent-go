@@ -129,11 +129,12 @@ class MinimaxMCR:
         return best_move, best_value
 
 class GoPlayer:
-    def __init__(self, init_player='b'):
-        self.init_player = init_player
+    def __init__(self, ai_player='b'):
+        self.init_player = 'b'
+        self.ai_player = ai_player
         # 初始化棋盘
         self.board = boards.Board(BOARD_SIZE)
-        self.current_color = init_player
+        self.current_color = 'b'
 
         # 记录上一个状态
         self.last_board = self.board.copy()
@@ -179,10 +180,10 @@ def ai_play(board: boards.Board, color, curstep):
     return best_move
 
 def vs_ai():
-    go_player = GoPlayer()
+    go_player = GoPlayer('w')
     print("* 落子输入格式：列字符+行坐标 J8 | 输入 pass 弃行 | 输入 back 悔棋")
     
-    if go_player.init_player == 'b':  # 若黑 ai先下
+    if go_player.ai_player == 'b':  # 若黑 ai先下
         move = ai_play(go_player.board, 'b', go_player.curstep)
         go_player.play_move(move)
 
