@@ -95,6 +95,11 @@ VALUE_MODEL_PATH = 'output\go_final_val_model_1_2.pth'
 '''终局价值网络模型数据位置'''
 VALUE_MODEL      = va.GoValueNet().to(DEVICE)
 '''终局价值网络模型选择'''
+
+# KataGo 价值判断===================================
+KATA_EXE_PATH = r'D:\01_EGGER\program\python\simple-inteligent-go\katago\katago.exe'
+KATA_MODEL_PATH = r'D:\01_EGGER\program\python\simple-inteligent-go\katago\kata1-b40c256-s5109387264-d1232289301.bin.gz'
+KATA_CONFIG_PATH = r'D:\01_EGGER\program\python\simple-inteligent-go\katago\analysis_config.cfg'
 # ================================================================================================
 
 
@@ -129,7 +134,7 @@ def go_str_to_idx(go_str):
     
     return (row_idx, col_idx)
 
-def idx_to_go_str(idx):
+def idx_to_go_str(idx, have_i=HAVE_I):
     '''将索引坐标转化为字符坐标'''
     r, c = idx
     col_map_I_rev = {0:'A', 1:'B', 2:'C',  3:'D',  4:'E',  5:'F',  6:'G',  7:'H',
@@ -139,7 +144,7 @@ def idx_to_go_str(idx):
                      8:'J', 9:'K',10:'L', 11:'M', 12:'N', 13:'O', 14:'P', 15:'Q',
                     16:'R',17:'S',18:'T'}
     rownum = r + 1
-    colchr = col_map_I_rev[c] if HAVE_I else col_map_rev[c]
+    colchr = col_map_I_rev[c] if have_i else col_map_rev[c]
     return f'{colchr}{rownum}'
 
 def read_go_sgf(sgf_content):
