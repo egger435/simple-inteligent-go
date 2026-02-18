@@ -227,12 +227,12 @@ class SgModelTrain():
                 # 保存最佳模型
                 if valid_acc > self.best_vali_acc:
                     self.best_vali_acc = valid_acc
-                    print(f'保存最佳模型 (Best Acc: {100*self.best_val_acc:.2f}%)')
+                    print(f'保存最佳模型 (Best Acc: {100*self.best_vali_acc:.2f}%)')
                     torch.save({
                         'model_state_dict': self.model.state_dict(),
                         'optimizer_state_dict': self.optimizer.state_dict(),
                         'scheduler_state_dict': scheduler.state_dict(),
-                        'best_val_acc': self.best_val_acc,
+                        'best_vali_acc': self.best_vali_acc,
                         'trained_chunks': chunk_idx + 1,
                         'total_batches': self.total_batches
                     }, SG_BEST_MODEL_PATH)  # 单独保存一个best模型
@@ -322,21 +322,21 @@ class SgModelTrain():
                         # 保存最佳模型
                         if val_acc > self.best_vali_acc:
                             self.best_vali_acc = val_acc
-                            print(f"  保存最佳模型 (Best: {100*self.best_val_acc:.2f}%)")
+                            print(f"  保存最佳模型 (Best: {100*self.best_vali_acc:.2f}%)")
                             torch.save({
                                 'model_state_dict': self.model.state_dict(),
                                 'global_epoch': global_epoch,
-                                'best_val_acc': self.best_val_acc,
+                                'best_vali_acc': self.best_vali_acc,
                                 'total_batches': self.total_batches
                             }, SG_BEST_MODEL_PATH)
                         
                         with open(LOG_PATH, 'a', encoding='utf-8') as f:
-                            f.write(f"[GE{global_epoch+1} C{idx_in_order+1}] Loss={avg_loss:.4f} | Val1={100*val_acc:.2f}% | Best={100*self.best_val_acc:.2f}%\n")
+                            f.write(f"[GE{global_epoch+1} C{idx_in_order+1}] Loss={avg_loss:.4f} | Val1={100*val_acc:.2f}% | Best={100*self.best_vali_acc:.2f}%\n")
                         
                     torch.save({
                         'model_state_dict': self.model.state_dict(),
                         'global_epoch': global_epoch,
-                        'best_val_acc': self.best_val_acc,
+                        'best_vali_acc': self.best_vali_acc,
                         'total_batches': self.total_batches
                     }, SG_SAVE_MODEL_PATH)
                 
@@ -347,7 +347,7 @@ class SgModelTrain():
                     if DEVICE == 'cuda': torch.cuda.empty_cache()
                     gc.collect()
             
-            print(f"\n训练完成 最佳验证准确率: {100*self.best_val_acc:.2f}%")
+            print(f"\n训练完成 最佳验证准确率: {100*self.best_vali_acc:.2f}%")
 
     def _train_one_chunk(self, chunk_path):
         dataset = SgChunkDataset(chunk_path, is_train=True)
