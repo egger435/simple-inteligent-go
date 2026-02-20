@@ -15,41 +15,41 @@ COLOR_MAP  = {1: 0.0, 2: 1.0}
 '''行棋方数值映射, 不修改'''
 HAVE_I     = True
 '''棋盘坐标是否包含I'''
-GAME_KOMI  = 0.0
+GAME_KOMI  = 7.5
 '''棋局贴目数量'''
 # ================================================================================================
 
 
 
 # 数据集生成相关 ==================================================================================
-SGF_DATASET_DIR      = 'data\gogod_commentary_sgfs'
+SGF_DATASET_DIR      = r'data\gogod_commentary_sgfs'
 '''原始sgf数据位置'''
 
 # 策略网络数据集====================================
-SG_DATASET_SAVE_PATH = 'E:/go_dataset/strategy_net'  
+SG_DATASET_SAVE_PATH = r'E:\go_dataset\strategy_net'  
 '''策略网络数据集保存位置'''
 SG_CHUNK_SAMPLE_NUM  = 500000  
 '''每50万个样本写入一个策略网络npz文件'''
 
 # 终局价值网络数据集================================
-VA_DATASET_SAVE_PATH      = 'E:/go_dataset/value_net_dataset_n.npz'  
+VA_DATASET_SAVE_PATH      = r'E:\go_dataset\value_net_dataset_n.npz'  
 '''价值网络数据集保存位置'''
 # ================================================================================================
 
 
 
 # 模型训练相关 ====================================================================================
-LOG_PATH             = 'D:/01_EGGER/program/python/simple-inteligent-go/output/log_resnet.txt'
+LOG_PATH             = r'output\log_resnet.txt'
 '''训练日志的保存位置'''
 
 # 策略网络模型训练===================================
-SG_CHUNK_DIR          = 'E:/go_dataset/strategy_net' 
+SG_CHUNK_DIR          = r'E:\go_dataset\strategy_net' 
 '''分片数据集位置'''
-SG_VALID_CHUNK_DIR    = 'E:/go_dataset/strategy_net/valid_chunk.npz' 
+SG_VALID_CHUNK_DIR    = r'E:\go_dataset\strategy_net\valid_chunk.npz' 
 '''策略网络训练验证集位置'''
-SG_SAVE_MODEL_PATH    = 'D:/01_EGGER/program/python/simple-inteligent-go/output/go_strategy_model_1_2.pth'
+SG_SAVE_MODEL_PATH    = r'output\go_strategy_model_1_2.pth'
 '''策略网络模型数据保存位置'''
-SG_BEST_MODEL_PATH    = 'D:/01_EGGER/program/python/simple-inteligent-go/output/go_strategy_model_t_b.pth'
+SG_BEST_MODEL_PATH    = r'output\go_strategy_model_t_b.pth'
 '''策略网络最佳模型保存位置'''
 SG_VALID_INTERNAL     = 1
 '''每训练几个chunk验证一次'''
@@ -67,9 +67,9 @@ SG_GRADIENT_ACCUMULATION_STEPS = 2
 SG_GRADIENT_CLIP = 1.0
 
 # 价值网络模型训练===================================
-VA_DATASET_PATH     = 'E:/go_dataset/value_net_dataset.npz'
+VA_DATASET_PATH     = r'E:\go_dataset\value_net_dataset.npz'
 '''价值网络数据集位置'''
-VA_SAVE_MODEL_PATH  = 'D:/01_EGGER/program/python/simple-inteligent-go/output/go_final_val_model_1_2.pth'
+VA_SAVE_MODEL_PATH  = r'output\go_final_val_model_1_2.pth'
 '''价值网络模型数据保存位置'''
 VA_BATCH_SIZE       = 128
 VA_LEARNING_RATE    = 1e-3
@@ -80,7 +80,7 @@ VA_PATIENCE         = 35
 
 
 # 策略选择相关 ====================================================================================
-STRATEGY_MODEL_PATH = "output\go_strategy_model_1_1.pth"
+STRATEGY_MODEL_PATH = r'output\go_strategy_model_1_1.pth'
 '''策略网络模型数据位置'''
 STRATEGY_MODEL      = sg.GoCNN_p().to(DEVICE)
 '''策略选择网络模型选择'''
@@ -91,15 +91,15 @@ TOP_K               = 3
 
 
 # 价值判断相关 ====================================================================================
-VALUE_MODEL_PATH = 'output\go_final_val_model_1_2.pth'
+VALUE_MODEL_PATH = r'output\go_final_val_model_1_2.pth'
 '''终局价值网络模型数据位置'''
 VALUE_MODEL      = va.GoValueNet().to(DEVICE)
 '''终局价值网络模型选择'''
 
 # KataGo 价值判断===================================
-KATA_EXE_PATH = r'D:\01_EGGER\program\python\simple-inteligent-go\katago\katago.exe'
-KATA_MODEL_PATH = r'D:\01_EGGER\program\python\simple-inteligent-go\katago\kata1-b40c256-s5109387264-d1232289301.bin.gz'
-KATA_CONFIG_PATH = r'D:\01_EGGER\program\python\simple-inteligent-go\katago\analysis_config.cfg'
+KATA_EXE_PATH = r'katago\katago.exe'
+KATA_MODEL_PATH = r'katago\kata1-b40c256-s5109387264-d1232289301.bin.gz'
+KATA_CONFIG_PATH = r'katago\analysis_config.cfg'
 # ================================================================================================
 
 
@@ -111,7 +111,6 @@ MC_START_THRESHOLD = 150
 '''蒙特卡洛推演启动阈值'''
 MC_SIMULATIONS     = 10
 '''蒙特卡洛推演次数'''
-
 # ================================================================================================
 
 
@@ -334,7 +333,7 @@ def get_sorted_chunk_files(chunk_dir):
     return [f[1] for f in chunk_files]  # 返回路径
 
 if __name__ == '__main__':
-    sgf_path = "D:\\02_EdgeDownload\\varied_selfplay_commentary_sgfs\\varied_selfplay_commentary\\60\\985.sgf"
+    sgf_path = 'D:\\02_EdgeDownload\\varied_selfplay_commentary_sgfs\\varied_selfplay_commentary\\60\\985.sgf'
     with open(sgf_path, 'rb') as f:
         sgf_content = f.read()
     np_board, val = get_final_from_sgf(sgf_content)

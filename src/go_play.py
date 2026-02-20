@@ -66,8 +66,8 @@ class KataGoEngine:
             'initialStones': [],
             'moves': moves,
             'rules': 'chinese',
-            'komi': 7.5,
-            'visits': 20,
+            'komi': GAME_KOMI,
+            'visits': 10,
             'includePolicy': False,
             'includeOwnership': False,
             'includeMovesOwnership': False
