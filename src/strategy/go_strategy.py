@@ -54,6 +54,7 @@ class GoStrategySelector:
         def _is_legal(pos):
             '''检查合法落子'''
             occpuied_points, _ = cur_board.list_occupied_points()
+            # print(occpuied_points)
             for point in occpuied_points:
                 if pos == point[1]:
                     return False
@@ -62,14 +63,14 @@ class GoStrategySelector:
         candidates = []
         for idx in sorted_indices:
             if idx == PASS_LABEL:
-                candidates.append(('pass', prob_np[idx]))
+                # candidates.append(('pass', prob_np[idx]))
                 continue
             r = idx // BOARD_SIZE
             c = idx % BOARD_SIZE
             if _is_legal((r, c)):
                 candidates.append(((r, c), prob_np[idx]))
-            if len(candidates) >= TOP_K:
-                break
+                if len(candidates) >= TOP_K:
+                    break
         
         return candidates
 

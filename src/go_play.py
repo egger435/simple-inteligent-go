@@ -7,11 +7,15 @@ from strategy.go_strategy import GoStrategySelector
 from value.go_value import GoValuePredictor
 from collections import deque
 from common import *
+import pyautogui
+import cv2
+import numpy as np
 
 class KataGoEngine:
     '''katago交互类'''
     def __init__(self):
         self.process = None
+        self.request_id = 0
         self._start_engine()
 
     def _start_engine(self):
@@ -51,16 +55,20 @@ class KataGoEngine:
     def restart(self):
         self.close()
         self._start_engine()
+        print('重启KataGo')
     
     def close(self):
         if self.process:
+            print('关闭KataGo')
             self.process.terminate()
             self.process.wait()
     
     def get_value(self, root_player, moves):
         '''根据当前落子列表给出下一个行棋方的胜率'''
+        self.request_id += 1
+        request_id = str(self.request_id)
         request = {
-            'id': '',
+            'id': request_id,
             'boardXSize': BOARD_SIZE,
             'boardYSize': BOARD_SIZE,
             'initialStones': [],
@@ -84,9 +92,13 @@ class KataGoEngine:
             if not line:
                 continue
 
-            # print(f'[KataGo] {line.strip()}')
+            print(f'[KataGo] {line.strip()}')
             try:
                 resp = json.loads(line)
+                if 'error' in resp:
+                    print(f"KataGo返回错误: {resp['error']}")
+                    self.restart()
+                    return -2
                 if 'rootInfo' not in resp:
                     continue
                 response = resp
@@ -98,14 +110,10 @@ class KataGoEngine:
             print('KataGo响应超时')
             return -1
         
-        if 'error' in response:
-            print(f"KataGo返回错误: {response['error']}")
-            return -2
-        
         # 解析结果
         player = 'b' if len(moves) % 2 == 0 else 'w'  # 下一个行棋方
         winrate = response['rootInfo']['winrate']
-        print(player, winrate)
+        print(f'行棋方: {player} | 胜率: {100*winrate:.2f}%\n')
 
         return winrate if root_player == player else (1-winrate)
 
@@ -311,16 +319,104 @@ class GoPlayer:
         self.board = self.last_board.copy()
         self.current_color = self.last_color
 
+class GoBoardDector:
+    def __init__(self):
+        self.board_size = BOARD_SIZE
+        self.cur_board_list = []
+        self.last_board_list = []
+
+    def get_board_img(self):
+        '''对当前棋盘截图得到灰度图'''
+        pil_img = pyautogui.screenshot(region=BOARD_REGION)
+        gray_img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2GRAY)
+        return gray_img
+    
+    def show_board_img(self, title, img, wait_ms=1000):
+        cv2.imshow(title, img)
+        key = cv2.waitKey(wait_ms)
+        if wait_ms == 0:
+            cv2.destroyAllWindows()
+        return key
+    
+    def do_move(self, pos):
+        self.cur_board_list.append(pos)
+        pix_pos = (META_PLAY_POS[0] + pos[1] * GAP, META_PLAY_POS[1] - pos[0] * GAP)
+        for _ in range(5):
+            pyautogui.click(pix_pos[0], pix_pos[1])
+            time.sleep(0.1)
+        for _ in range(5):
+            pyautogui.click(pix_pos[0], pix_pos[1])
+            time.sleep(0.1)
+        print('准备保存当前棋盘状态')
+        self._save_last_board()
+
+    def _analyze_black(self):
+        '''分析得到黑棋位置'''
+        _, b_thresh = cv2.threshold(  # 二值化提取黑棋特征图
+            self.cur_img,
+            BLACK_THRESH,
+            255,
+            cv2.THRESH_BINARY
+        )
+
+        # self.show_board_img('黑棋二值化特征图' ,b_thresh, 0)
+
+        # 遍历棋盘格子位置 判断是否有黑棋
+        for r in range(self.board_size):
+            for c in range(self.board_size):
+                pix_pos = (META_ANALYSYS_POS[0] + r * GAP, META_ANALYSYS_POS[1] + c * GAP)
+                if b_thresh[pix_pos[0], pix_pos[1]] == 0:
+                    self.cur_board_list.append((18 - r, c))
+    
+    def _analyze_white(self):
+        '''分析得到白棋位置'''
+        _, w_thresh = cv2.threshold(
+            self.cur_img,
+            WHITE_THRESH,
+            255,
+            cv2.THRESH_BINARY
+        )
+
+        # self.show_board_img('白棋二值化特征图' ,w_thresh, 0)
+
+        for r in range(self.board_size):
+            for c in range(self.board_size):
+                pix_pos = (META_ANALYSYS_POS[0] + r * GAP - WHITE_BIAS, META_ANALYSYS_POS[1] + c * GAP - WHITE_BIAS)
+                if w_thresh[pix_pos[0], pix_pos[1]] == 255:
+                    self.cur_board_list.append((18 - r, c))
+    
+    def analyze_cur_board(self):
+        '''对棋盘截图, 分析得到当前棋盘状态'''
+        self.cur_img = self.get_board_img()
+
+        # 分析得到黑棋白棋位置
+        self._analyze_black()
+        self._analyze_white()
+
+    def _save_last_board(self):
+        '''保存当前棋盘状态为上一个状态'''
+        self.last_board_list = self.cur_board_list.copy()
+        self.cur_board_list = []
+    
+    def cal_new_stone_pos(self):
+        '''计算新落子位置'''
+        for pos in self.cur_board_list:
+            if pos not in self.last_board_list:
+                return pos
+        return None
+
 def ai_play(steps_list, board: boards.Board, color, curstep):
     '''ai行棋'''
     minimax_search = MinimaxMCR(steps_list, board, color, curstep)
+    if curstep % 10 == 0:  # 每10手重启一次katago
+        minimax_search.va_engine.restart()
     best_move, best_value = minimax_search.search()
     print(f'ai选择落子: {idx_to_go_str(best_move)} | value: {best_value:.4f}')
     return best_move
 
 def vs_ai():
-    go_player = GoPlayer('w')
-    print("* 落子输入格式：列字符+行坐标 J8 | 输入 pass 弃行 | 输入 back 悔棋")
+    go_player = GoPlayer('b')
+    print("* 落子输入格式：列字符+行坐标 J8 ")
     
     if go_player.ai_player == 'b':  # 若黑 ai先下
         move = ai_play(go_player.steps, go_player.board, 'b', go_player.curstep)
@@ -347,5 +443,36 @@ def vs_ai():
         else:
             go_player.play_move(ai_move)
 
+def vs_ai_auto():
+    go_player = GoPlayer('b')
+    board_dector = GoBoardDector()
+    board_dector.analyze_cur_board()
+    print('模型加载完成')
+
+    if go_player.ai_player == 'w':
+        move = ai_play(go_player.steps, go_player.board, 'b', go_player.curstep)
+        go_player.play_move(move)
+        board_dector.do_move(move)
+
+    while True:
+        # 人类落子
+        board_dector.analyze_cur_board()
+        new_stone_pos = board_dector.cal_new_stone_pos()
+        if new_stone_pos is None:
+            time.sleep(1)
+            continue
+
+        print(f'新落子: {idx_to_go_str(new_stone_pos)}')
+        go_player.play_move_str(idx_to_go_str(new_stone_pos))
+        go_player.print_board()
+        print(go_player.steps)
+
+        # AI落子
+        ai_move = ai_play(go_player.steps, go_player.board, go_player.current_color, go_player.curstep)
+        go_player.play_move(ai_move)
+        board_dector.do_move(ai_move)
+
+
+
 if __name__ == "__main__":
-    vs_ai()
+    vs_ai_auto()
