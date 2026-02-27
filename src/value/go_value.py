@@ -7,6 +7,10 @@ from common import *
 import strategy.go_strategy as go_sg
 import random as rd
 import torch
+import subprocess
+import sys
+import time
+import json
 
 class GoValuePredictor:
     '''终局价值预测类'''
@@ -79,6 +83,117 @@ class GoValuePredictor:
         b_win_rate = b_win / times
         return (b_MCR_val, w_MCR_val), (b_win_rate, 1 - b_win_rate)
 
+class KataGoEngine:
+    '''katago交互类'''
+    def __init__(self):
+        self.process = None
+        self.request_id = 0
+        self._start_engine()
+
+    def _start_engine(self):
+        try:
+            self.process = subprocess.Popen(
+                [
+                    KATA_EXE_PATH,
+                    'analysis',
+                    '-model', KATA_MODEL_PATH,
+                    '-config', KATA_CONFIG_PATH
+                ],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding='utf-8',
+                bufsize=1,
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+
+            ready = False
+            for _ in range(300):
+                line = self.process.stdout.readline()
+                if not line:
+                    continue
+                if 'ready to begin handling requests' in line:
+                    ready = True
+                    break
+            
+            if not ready:
+                raise RuntimeError('katago启动超时')
+        
+        except Exception as e:
+            print(f'启动失败: {e}')
+            sys.exit(1)
+    
+    def restart(self):
+        self.close()
+        self._start_engine()
+        print('重启KataGo...')
+    
+    def close(self):
+        if self.process:
+            print('关闭KataGo...')
+            self.process.terminate()
+            self.process.wait()
+    
+    def get_value(self, root_player, moves):
+        '''根据当前落子列表给出下一个行棋方的胜率'''
+        self.request_id += 1
+        request_id = str(self.request_id)
+        request = {
+            'id': request_id,
+            'boardXSize': BOARD_SIZE,
+            'boardYSize': BOARD_SIZE,
+            'initialStones': [],
+            'moves': moves,
+            'rules': 'chinese',
+            'komi': GAME_KOMI,
+            'visits': 10,
+            'includePolicy': False,
+            'includeOwnership': False,
+            'includeMovesOwnership': False
+        }
+
+        # 写入请求
+        self.process.stdin.write(json.dumps(request) + '\n')
+        self.process.stdin.flush()
+
+        response = None
+        start_read = time.time()
+        while time.time() - start_read < 5:  # 5秒超时
+            line = self.process.stdout.readline()
+            if not line:
+                continue
+            
+            kata_message = line.strip()
+            print(f'[KataGo] {kata_message}')
+            if ('error' or 'Error' in kata_message) and 'rawStWrError' not in kata_message:
+                print(f"KataGo返回错误: {kata_message}")
+                self.restart()
+                return -2
+            try:
+                resp = json.loads(line)
+                if 'error' in resp:
+                    print(f"KataGo返回错误: {resp['error']}")
+                    self.restart()
+                    return -2
+                if 'rootInfo' not in resp:
+                    continue
+                response = resp
+                break
+            except json.JSONDecodeError:
+                continue
+        
+        if not response:
+            print('KataGo响应超时')
+            return -1
+        
+        # 解析结果
+        player = 'b' if len(moves) % 2 == 0 else 'w'  # 下一个行棋方
+        winrate = response['rootInfo']['winrate']
+        print(f'我方胜率: {100*(1-winrate):.2f}%\n')
+
+        return winrate if root_player == player else (1-winrate)
+
 if __name__ == '__main__':
     total_samples = correct_samples = 0
     value_predictor = GoValuePredictor()
@@ -98,17 +213,3 @@ if __name__ == '__main__':
             if total_samples == 10000:
                 print(f'acc: {(correct_samples / total_samples):.4f}')
                 exit()
-    
-    
-
-    # test_sgf_path = "D:\\02_EdgeDownload\\varied_models_commentary_sgfs\\varied_models_all\save-0.bin\\2011-05-03s.sgf"
-    # with open(test_sgf_path, 'rb') as f:
-    #     sgf_content = f.read()
-    # value_predictor = GoValuePredictor()
-    # board, komi, winner = get_final_board_from_sgf(sgf_content)
-    # print(ascii_boards.render_board(board))
-    # value = value_predictor.predict_value(board, komi)
-    
-
-    # print(value, winner)
-    # print(ascii_boards.render_board(board))

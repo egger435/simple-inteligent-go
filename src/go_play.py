@@ -1,126 +1,96 @@
+import os
+import sys
+
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    BASE_DIR = os.path.dirname(BASE_DIR)
+os.chdir(BASE_DIR)
+
 import subprocess
 import sys
 import time
 import json
+import argparse
 from sgfmill import boards, ascii_boards
 from strategy.go_strategy import GoStrategySelector
-from value.go_value import GoValuePredictor
+from value.go_value import GoValuePredictor, KataGoEngine
 from collections import deque
 from common import *
 import pyautogui
 import cv2
 import numpy as np
 
-class KataGoEngine:
-    '''katago交互类'''
-    def __init__(self):
-        self.process = None
-        self.request_id = 0
-        self._start_engine()
+def parse_args():
+    parser = argparse.ArgumentParser(description="Kata-EgGO: A Simple Intelligent Go Player")
 
-    def _start_engine(self):
-        try:
-            self.process = subprocess.Popen(
-                [
-                    KATA_EXE_PATH,
-                    'analysis',
-                    '-model', KATA_MODEL_PATH,
-                    '-config', KATA_CONFIG_PATH
-                ],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                encoding='utf-8',
-                bufsize=1,
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
-
-            ready = False
-            for _ in range(300):
-                line = self.process.stdout.readline()
-                if not line:
-                    continue
-                if 'ready to begin handling requests' in line:
-                    ready = True
-                    break
-            
-            if not ready:
-                raise RuntimeError('katago启动超时')
-        
-        except Exception as e:
-            print(f'启动失败: {e}')
-            sys.exit(1)
+    parser.add_argument('--mode', '-m',
+                        choices=['auto', 'manual'],
+                        default='auto',
+                        help='运行模式: auto - 弈客围棋自动对局; manual - 人机手动对战; 默认auto')
     
-    def restart(self):
-        self.close()
-        self._start_engine()
-        print('重启KataGo...')
+    parser.add_argument('--ai-color', '-c',
+                        choices=['b', 'w'],
+                        default='b',
+                        help='AI执棋颜色: b - 黑棋; w - 白棋; 默认b')
     
-    def close(self):
-        if self.process:
-            print('关闭KataGo...')
-            self.process.terminate()
-            self.process.wait()
+    parser.add_argument('--komi', '-k',
+                        type=float,
+                        default=7.5,
+                        help='黑方贴目, 默认7.5')
     
-    def get_value(self, root_player, moves):
-        '''根据当前落子列表给出下一个行棋方的胜率'''
-        self.request_id += 1
-        request_id = str(self.request_id)
-        request = {
-            'id': request_id,
-            'boardXSize': BOARD_SIZE,
-            'boardYSize': BOARD_SIZE,
-            'initialStones': [],
-            'moves': moves,
-            'rules': 'chinese',
-            'komi': GAME_KOMI,
-            'visits': 10,
-            'includePolicy': False,
-            'includeOwnership': False,
-            'includeMovesOwnership': False
-        }
+    parser.add_argument('--device', '-d',
+                        choices=['cpu', 'cuda'],
+                        default='cuda',
+                        help='算法运行设备: cpu - 使用CPU; cuda - 使用GPU; 默认cuda')
+    
+    parser.add_argument('--have-i', '-hi',
+                        action='store_true',
+                        help='是否使用包含I列的坐标系统, 默认False')
+    
+    parser.add_argument('--top-k', '-tk',
+                        type=int,
+                        default=3,
+                        help='每层搜索保留的top k个子节点, 默认3')
+    
+    parser.add_argument('--search-depth', '-sd',
+                        type=int,
+                        default=3,
+                        help='Minimax搜索深度, 默认3')
+    
+    parser.add_argument('--board-region', '-br',
+                        type=str,
+                        default='215, 211, 1129, 1129',
+                        help='棋盘截图区域: x, y, width, height; 默认"215, 211, 1129, 1129"')
+    
+    parser.add_argument('--meta-play-pos', '-mpp',
+                        type=str,
+                        default='283, 1275',
+                        help='落子元位置, 最右下角的落子位置: x, y; 默认"283, 1275"')
+    
+    parser.add_argument('--meta-analysys-pos', '-map', 
+                        type=str, 
+                        default='67,66',
+                        help='分析分析时的相对位置, 默认"50,50"')
+    
+    parser.add_argument('--gap', '-g', 
+                        type=int, 
+                        default=55,
+                        help='棋盘格子间距, 默认55')
+    
+    return parser.parse_args()
 
-        # 写入请求
-        self.process.stdin.write(json.dumps(request) + '\n')
-        self.process.stdin.flush()
-
-        response = None
-        start_read = time.time()
-        while time.time() - start_read < 5:  # 5秒超时
-            line = self.process.stdout.readline()
-            if not line:
-                continue
-            
-            kata_message = line.strip()
-            print(f'[KataGo] {kata_message}')
-            if ('error' or 'Error' in kata_message) and 'rawStWrError' not in kata_message:
-                print(f"KataGo返回错误: {kata_message}")
-                self.restart()
-                return -2
-            try:
-                resp = json.loads(line)
-                if 'error' in resp:
-                    print(f"KataGo返回错误: {resp['error']}")
-                    self.restart()
-                    return -2
-                if 'rootInfo' not in resp:
-                    continue
-                response = resp
-                break
-            except json.JSONDecodeError:
-                continue
-        
-        if not response:
-            print('KataGo响应超时')
-            return -1
-        
-        # 解析结果
-        player = 'b' if len(moves) % 2 == 0 else 'w'  # 下一个行棋方
-        winrate = response['rootInfo']['winrate']
-        print(f'我方胜率: {100*(1-winrate):.2f}%\n')
-
-        return winrate if root_player == player else (1-winrate)
+args = parse_args()
+BOARD_REGION = tuple(map(int, args.board_region.split(',')))
+META_PLAY_POS = tuple(map(int, args.meta_play_pos.split(',')))
+META_ANALYSYS_POS = tuple(map(int, args.meta_analysys_pos.split(',')))
+GAP = args.gap
+HAVE_I = args.have_i
+GAME_KOMI = args.komi
+DEVICE = args.device
+TOP_K = args.top_k
+MAX_SEARCH_DEEPTH = args.search_depth
 
 class TreeNode:
     '''MiniMax 树节点'''
@@ -428,8 +398,6 @@ class GoBoardDector:
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
         w_thresh = cv2.morphologyEx(w_thresh, cv2.MORPH_CLOSE, kernel)
 
-        
-
         for r in range(self.board_size):
             for c in range(self.board_size):
                 # 区域采样
@@ -475,8 +443,7 @@ def ai_play(steps_list, board: boards.Board, color, curstep, ko_pos=None):
     print(f'ai选择落子: {idx_to_go_str(best_move)} | value: {best_value:.4f}')
     return best_move
 
-def vs_ai():
-    go_player = GoPlayer('b')
+def vs_ai(go_player):
     print("* 落子输入格式：列字符+行坐标 J8 ")
     
     if go_player.ai_player == 'b':  # 若黑 ai先下
@@ -516,8 +483,7 @@ def vs_ai():
         else:
             go_player.play_move(ai_move)
 
-def vs_ai_auto():
-    go_player = GoPlayer('w')
+def vs_ai_auto(go_player):
     board_dector = GoBoardDector()
     board_dector.analyze_cur_board()
     print('模型加载完成')
@@ -557,5 +523,16 @@ def vs_ai_auto():
         go_player.play_move(ai_move)
         board_dector.do_move(ai_move)
 
+def main():
+    print(f"== Kata-EgGO: A Simple Intelligent Go Player ==\n")
+    print(f"运行模式: {args.mode} | AI执棋: {args.ai_color}")
+
+    go_player = GoPlayer(ai_player=args.ai_color)
+
+    if args.mode == 'auto':
+        vs_ai_auto(go_player)
+    elif args.mode == 'manual':
+        vs_ai(go_player)
+
 if __name__ == "__main__":
-    vs_ai_auto()
+    main()

@@ -41,7 +41,7 @@ VA_DATASET_SAVE_PATH      = r'E:\go_dataset\value_net_dataset_n.npz'
 
 
 # 模型训练相关 ====================================================================================
-LOG_PATH             = r'output\log_resnet.txt'
+LOG_PATH             = r'output_models\log_resnet.txt'
 '''训练日志的保存位置'''
 
 # 策略网络模型训练===================================
@@ -49,9 +49,9 @@ SG_CHUNK_DIR          = r'E:\go_dataset\strategy_net'
 '''分片数据集位置'''
 SG_VALID_CHUNK_DIR    = r'E:\go_dataset\strategy_net\valid_chunk.npz' 
 '''策略网络训练验证集位置'''
-SG_SAVE_MODEL_PATH    = r'output\go_strategy_model_1_2.pth'
+SG_SAVE_MODEL_PATH    = r'output_models\go_strategy_model_1_2.pth'
 '''策略网络模型数据保存位置'''
-SG_BEST_MODEL_PATH    = r'output\go_strategy_model_t_b.pth'
+SG_BEST_MODEL_PATH    = r'output_models\go_strategy_model_t_b.pth'
 '''策略网络最佳模型保存位置'''
 SG_VALID_INTERNAL     = 1
 '''每训练几个chunk验证一次'''
@@ -71,7 +71,7 @@ SG_GRADIENT_CLIP = 1.0
 # 价值网络模型训练===================================
 VA_DATASET_PATH     = r'E:\go_dataset\value_net_dataset.npz'
 '''价值网络数据集位置'''
-VA_SAVE_MODEL_PATH  = r'output\go_final_val_model_1_2.pth'
+VA_SAVE_MODEL_PATH  = r'output_models\go_final_val_model_1_2.pth'
 '''价值网络模型数据保存位置'''
 VA_BATCH_SIZE       = 128
 VA_LEARNING_RATE    = 1e-3
@@ -82,7 +82,7 @@ VA_PATIENCE         = 35
 
 
 # 策略选择相关 ====================================================================================
-STRATEGY_MODEL_PATH = r'output\go_strategy_model_1_1.pth'
+STRATEGY_MODEL_PATH = r'output_models\go_strategy_model_1_1.pth'
 '''策略网络模型数据位置'''
 STRATEGY_MODEL      = sg.GoCNN_p().to(DEVICE)
 '''策略选择网络模型选择'''
@@ -93,7 +93,7 @@ TOP_K               = 3
 
 
 # 价值判断相关 ====================================================================================
-VALUE_MODEL_PATH = r'output\go_final_val_model_1_2.pth'
+VALUE_MODEL_PATH = r'output_models\go_final_val_model_1_2.pth'
 '''终局价值网络模型数据位置'''
 VALUE_MODEL      = va.GoValueNet().to(DEVICE)
 '''终局价值网络模型选择'''

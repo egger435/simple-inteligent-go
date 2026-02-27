@@ -1,7 +1,12 @@
 _test_demo
 data/gogod_commentary_sgfs
 __pycache__
-/output
+/output_models
 /src/__pycache__
 /src/strategy/__pycache__
 katago/kata1-b40c256-s5109387264-d1232289301.bin.gz
+/build
+build_exe.bat
+/dist
+go_ai.spec
+KataEgGO.spec
