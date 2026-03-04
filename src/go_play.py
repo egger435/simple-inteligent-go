@@ -32,7 +32,7 @@ def parse_args():
     
     parser.add_argument('--ai-color', '-c',
                         choices=['b', 'w'],
-                        default='b',
+                        default='w',
                         help='AI执棋颜色: b - 黑棋; w - 白棋; 默认b')
     
     parser.add_argument('--komi', '-k',
@@ -382,8 +382,14 @@ class GoBoardDector:
         # 遍历棋盘格子位置 判断是否有黑棋
         for r in range(self.board_size):
             for c in range(self.board_size):
-                pix_pos = (META_ANALYSYS_POS[0] + r * GAP, META_ANALYSYS_POS[1] + c * GAP)
-                if b_thresh[pix_pos[0], pix_pos[1]] == 0:
+                # 区域采样
+                roi_ok = False
+                roi = b_thresh[
+                    META_ANALYSYS_POS[0] + r * GAP - WHITE_BIAS : META_ANALYSYS_POS[0] + r * GAP + WHITE_BIAS,
+                    META_ANALYSYS_POS[1] + c * GAP - WHITE_BIAS : META_ANALYSYS_POS[1] + c * GAP + WHITE_BIAS
+                ]
+                roi_ok = np.any(roi == 0)
+                if roi_ok:
                     self.cur_board_list.append((18 - r, c))
     
     def _analyze_white(self):
