@@ -1,0 +1,30 @@
+{
+    "device": "cuda",
+    "board_size": 19,
+    "pass_label": 361,
+    "have_i": true,
+    "color_map": {
+        "1": 0.0,
+        "2": 1.0
+    },
+    "strategy_model_path": "output_models\\go_strategy_model_1_1.pth",
+    "strategy_model_type": "GoCNN_p",
+    "top_k": 4,
+    "value_model_path": "output_models\\go_final_val_model_1_2.pth",
+    "kata_exe_path": "katago\\katago.exe",
+    "kata_model_path": "katago\\kata1-b40c256-s5109387264-d1232289301.bin.gz",
+    "kata_config_path": "katago\\analysis_config.cfg",
+    "max_search_depth": 5,
+    "use_own_value_net": false,
+    "mc_rollouts": 5,
+    "mc_steps": 5,
+    "search_algorithm": "mcts",
+    "mcts_simulations": 100,
+    "mcts_c_puct": 1.4,
+    "mcts_expand_width": 10,
+    "mcts_eval_batch_size": 10,
+    "mcts_temperature": 0.0,
+    "mcts_visualize": false,
+    "mcts_vis_interval": 0.5,
+    "mcts_verbose": true
+}

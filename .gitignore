@@ -1,12 +1,51 @@
-_test_demo
-data/gogod_commentary_sgfs
-__pycache__
-/output_models
-/src/__pycache__
-/src/strategy/__pycache__
-katago/kata1-b40c256-s5109387264-d1232289301.bin.gz
-/build
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+_test_demo/
+
+/katago/katago.exe
+/katago/*.bin.gz
+/katago/*.dll
+
+# ===== 数据集（大，12GB+）=====
+/data/gogod_commentary_sgfs/
+/data/varied_selfplay_commentary_sgfs/
+/data/*.npz
+/data/*.zip
+
+# ===== 配置文件（含本地路径，用 config.example.json 模板）=====
+/config.json
+
+# ===== 日志 / 临时文件 =====
+*.log
+*.txt
+/log/
+gtp_logs/
+/gtp_logs
 build_exe.bat
-/dist
 go_ai.spec
 KataEgGO.spec
+
+# ===== IDE / 系统 =====
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+/python
+docs/interview-go-ai.md
+docs/P0-P1-improvements.md
+docs/rl-implementation-plan.md
+docs/self-play-rl-guide.md
+docs/value-net-training-plan.md
+
+# ===== 模型文件（大，自行训练/下载）=====
+/output_models/
+
