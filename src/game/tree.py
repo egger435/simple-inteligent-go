@@ -38,6 +38,7 @@ class BatchMinimaxMCR:
         self.top_k = top_k
         self.max_depth = max_depth
         self.root_state = root_state.copy()
+        self.root_ko = ko_pos            # 当前局面的劫争禁着点（simple ko）
         self.root = None
         self.leaves = []
 
@@ -48,18 +49,20 @@ class BatchMinimaxMCR:
             print(f'[批量树] 构建搜索树 (TOP_K={self.top_k}, depth={self.max_depth})...')
         t0 = time.time()
 
-        # 根节点
+        # 根节点（回放真实落子，同时追踪劫争禁着点）
         root_board = boards.Board(19)
         root_moves = []
+        ko = None
         for color, pos_str in self.steps_list:
             if pos_str == 'pass':
                 root_moves.append([color, 'pass'])
                 continue
             from common import go_str_to_idx
             r, c = go_str_to_idx(pos_str, have_i=False)
-            root_board.play(r, c, color.lower())
+            ko, _ = root_board.play(r, c, color.lower())
             root_moves.append([color, idx_to_go_str((r, c), have_i=False)])
-        self.root = _BNode(root_board, None, self.root_player, 0, 0.0)
+        self.root = _BNode(root_board, None, self.root_player, 0, 0.0,
+                           ko_point=self.root_ko if self.root_ko is not None else ko)
         self.root.moves = root_moves
         level_nodes = [self.root]
         total_nodes = 1
@@ -85,13 +88,17 @@ class BatchMinimaxMCR:
                     if probs[idx] <= 0:
                         continue
                     r, c = idx // 19, idx % 19
+                    # 劫争：禁止立即提回（否则会无限循环提劫）
+                    if node.ko_point is not None and (r, c) == node.ko_point:
+                        continue
                     try:
                         child_board = node.board.copy()
-                        child_board.play(r, c, node.color)
+                        ko_point, _ = child_board.play(r, c, node.color)
                     except ValueError:
                         continue
                     child_color = 'w' if node.color == 'b' else 'b'
-                    child = _BNode(child_board, node, child_color, d + 1, 0.0)
+                    child = _BNode(child_board, node, child_color, d + 1, 0.0,
+                                   ko_point=ko_point)
                     child.move = (r, c)
                     child.moves = node.moves + [
                         [node.color.upper(), idx_to_go_str((r, c), have_i=False)]
@@ -135,13 +142,15 @@ class BatchMinimaxMCR:
         if self.verbose:
             print(f'[MC推演] {n_leaves} 叶 × {n_rollouts} 推演 × {n_steps} 步...')
 
-        # 初始化推演棋盘
+        # 初始化推演棋盘（每个棋盘独立追踪劫争禁着点）
         boards = []
         colors = []
+        ko_points = []
         for leaf in self.leaves:
             for _ in range(n_rollouts):
                 boards.append(leaf.board.copy())
                 colors.append(leaf.color)
+                ko_points.append(leaf.ko_point)
 
         # 逐步推演
         for step in range(n_steps):
@@ -149,8 +158,12 @@ class BatchMinimaxMCR:
             for j, move in enumerate(moves):
                 if move is None:
                     continue
+                r, c = move
+                # 劫争禁着点：跳过非法提回
+                if ko_points[j] is not None and (r, c) == ko_points[j]:
+                    continue
                 try:
-                    boards[j].play(move[0], move[1], colors[j])
+                    ko_points[j], _ = boards[j].play(r, c, colors[j])
                 except ValueError:
                     pass
                 colors[j] = 'w' if colors[j] == 'b' else 'b'
@@ -234,9 +247,9 @@ class BatchMinimaxMCR:
 class _BNode:
     '''批量树的轻量节点（无 sgfmill 依赖，仅存必要信息）。'''
     __slots__ = ('board', 'parent', 'color', 'depth', 'value',
-                 'children', 'move', 'moves')
+                 'children', 'move', 'moves', 'ko_point')
 
-    def __init__(self, board, parent, color, depth, value):
+    def __init__(self, board, parent, color, depth, value, ko_point=None):
         self.board = board          # sgfmill Board
         self.parent = parent        # _BNode or None
         self.color = color          # 'b' | 'w'
@@ -245,6 +258,7 @@ class _BNode:
         self.children = []          # [_BNode, ...]
         self.move = None            # (row, col) — 父到本节点的落子
         self.moves = None           # KataGo 落子序列 [['B','Q16'],...]
+        self.ko_point = ko_point    # 本节点禁着点（simple ko，轮到 color 走时不可落子）
 
     @property
     def by_move(self):
@@ -270,6 +284,7 @@ def search_move(steps_list, board, color, curstep, ko_pos=None,
         use_own_value_net: 评估方式（None 读全局）
         n_rollouts / n_steps: BatchMinimax MC 参数
         simulations / c_puct / temperature: MCTS 参数（默认读 config）
+        ko_pos: 当前劫争禁着点（前一子造成的 simple ko 位置，本手禁着）
 
     Returns:
         (best_move, best_value)
@@ -291,7 +306,7 @@ def search_move(steps_list, board, color, curstep, ko_pos=None,
             simulations=simulations, c_puct=c_puct, temperature=temperature,
             expand_width=expand_width, eval_batch_size=eval_batch_size,
             use_own_value_net=use_own_value_net,
-            verbose=verbose,
+            verbose=verbose, ko_pos=ko_pos,
         )
         return mcts.search()
     else:
@@ -302,6 +317,6 @@ def search_move(steps_list, board, color, curstep, ko_pos=None,
             else cfg.get('max_search_depth', 5),
             use_own_value_net=use_own_value_net,
             n_rollouts=n_rollouts, n_steps=n_steps,
-            verbose=verbose,
+            verbose=verbose, ko_pos=ko_pos,
         )
         return minimax.search()

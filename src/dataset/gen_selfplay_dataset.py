@@ -122,6 +122,7 @@ def main():
         t0 = time.time()
         board = boards.Board(BOARD_SIZE)
         current_color = 'b'
+        ko_pos = None            # 当前劫争禁着点
         kata_moves = []          # KataGo 格式
         sampled = []             # [(state_np, moves_snapshot), ...]
         consecutive_pass = 0
@@ -134,6 +135,10 @@ def main():
 
             # ---- 策略网络预测 ----
             full_probs = sg.predict_full_probs(board, current_color)
+            # 劫争禁着点屏蔽（禁止立即提回）
+            if ko_pos is not None:
+                full_probs = full_probs.copy()
+                full_probs[ko_pos[0] * BOARD_SIZE + ko_pos[1]] = 0.0
             move_idx = sample_move(full_probs, SP_TEMPERATURE)
 
             # ---- 落子 ----
@@ -144,7 +149,7 @@ def main():
                 consecutive_pass = 0
                 row, col = move_idx // BOARD_SIZE, move_idx % BOARD_SIZE
                 try:
-                    board.play(row, col, current_color)
+                    ko_pos, _ = board.play(row, col, current_color)
                     kata_moves.append([
                         current_color.upper(),
                         idx_to_go_str((row, col), have_i=False),

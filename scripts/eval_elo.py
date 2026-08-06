@@ -51,7 +51,7 @@ MODES = {
 
 
 # =====================================================================
-def ai_move(color, steps, board, params):
+def ai_move(color, steps, board, params, ko_pos=None):
     '''AI 走一步，返回 (move_or_pass, value)。'''
     algorithm = params.get('algorithm', 'minimax')
     return search_move(
@@ -64,6 +64,7 @@ def ai_move(color, steps, board, params):
         n_steps=params.get('n_steps'),
         simulations=params.get('simulations'),
         c_puct=params.get('c_puct'),
+        ko_pos=ko_pos,
         verbose=False,
     )
 
@@ -73,6 +74,7 @@ def play_one_game(params, opponent, ai_is_black, max_steps,
     '''AI vs GTP 对手一局，返回 'ai' / 'opp'。逐步打印每手。'''
     board = boards.Board(BOARD_SIZE)
     current = 'b'
+    ko_pos = None                # 当前劫争禁着点
     ai_color = 'b' if ai_is_black else 'w'
     opp_color = 'w' if ai_is_black else 'b'
     steps = []
@@ -81,15 +83,19 @@ def play_one_game(params, opponent, ai_is_black, max_steps,
     for step in range(max_steps):
         if current == ai_color:
             # AI 走棋
-            move, value = ai_move(current, steps, board, params)
+            move, value = ai_move(current, steps, board, params, ko_pos=ko_pos)
             if move == 'pass':
                 move_str = 'pass'
             else:
                 move_str = idx_to_go_str(move, have_i=False)
-                try:
-                    board.play(move[0], move[1], current)
-                except ValueError:
+                # 劫争禁着点防御（搜索正常时不会返回该点）
+                if ko_pos is not None and (move[0], move[1]) == ko_pos:
                     move_str = 'pass'
+                else:
+                    try:
+                        ko_pos, _ = board.play(move[0], move[1], current)
+                    except ValueError:
+                        move_str = 'pass'
             # 同步给对手
             opponent.play(current, move_str)
             steps.append([current.upper(), move_str])
@@ -112,7 +118,7 @@ def play_one_game(params, opponent, ai_is_black, max_steps,
             else:
                 try:
                     r, c = go_str_to_idx(move_str, have_i=False)
-                    board.play(r, c, current)
+                    ko_pos, _ = board.play(r, c, current)
                 except (ValueError, KeyError):
                     move_str = 'pass'
             steps.append([current.upper(), move_str])

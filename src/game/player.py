@@ -25,12 +25,22 @@ class GoPlayer:
         self.ko_pos = None    # 当前劫争位
 
     # ------------------------------------------------------------------
+    def _check_ko(self, pos: tuple) -> None:
+        '''劫争校验：当前劫争禁着点上的落子非法（立即提回会重现上一局面）。'''
+        if self.ko_pos is not None and (pos[0], pos[1]) == self.ko_pos:
+            raise ValueError(
+                f'{idx_to_go_str(self.ko_pos, HAVE_I)} 是劫争禁着点，'
+                f'不能立即提回，需先在别处落子'
+            )
+
+    # ------------------------------------------------------------------
     def play_move_str(self, go_str: str) -> None:
         '''执行落子（字符坐标，如 "J8"）。'''
         if go_str == 'pass':
             print(f'{self.current_color.upper()} 弃行')
         else:
             pos = go_str_to_idx(go_str)
+            self._check_ko(pos)
             self.last_board = self.board.copy()
             self.last_color = self.current_color
             self.ko_pos, _ = self.board.play(pos[0], pos[1], self.current_color)
@@ -46,6 +56,7 @@ class GoPlayer:
     # ------------------------------------------------------------------
     def play_move(self, go_pos: tuple) -> None:
         '''执行落子（元组坐标 (row, col)），返回劫争位。'''
+        self._check_ko(go_pos)
         self.ko_pos, _ = self.board.play(go_pos[0], go_pos[1], self.current_color)
         self.steps.append([
             self.current_color.upper(),

@@ -62,6 +62,7 @@ class SelfPlayEngine:
         current_color = 'b'
         records = []
         consecutive_pass = 0
+        ko_pos = None          # 当前劫争禁着点
         kata_moves = []  # KataGo 格式落子序列 [['B', 'Q16'], ...]
 
         for step in range(self.max_steps):
@@ -75,6 +76,11 @@ class SelfPlayEngine:
 
             # ---- 策略网络预测（已自动屏蔽占位，无需再掩码） ----
             full_probs = self._sg_selector.predict_full_probs(board, current_color)
+
+            # ---- 劫争禁着点屏蔽（禁止立即提回） ----
+            if ko_pos is not None:
+                full_probs = full_probs.copy()
+                full_probs[ko_pos[0] * BOARD_SIZE + ko_pos[1]] = 0.0
 
             # ---- 温度采样 ----
             if full_probs[PASS_LABEL] >= 0.999:
@@ -93,13 +99,13 @@ class SelfPlayEngine:
                 row = move_idx // BOARD_SIZE
                 col = move_idx % BOARD_SIZE
                 try:
-                    board.play(row, col, current_color)
+                    ko_pos, _ = board.play(row, col, current_color)
                     kata_moves.append([
                         current_color.upper(),
                         idx_to_go_str((row, col), have_i=False),
                     ])
                 except ValueError:
-                    # 非法着（劫/自杀/已落子）→ 按弃行处理
+                    # 非法着（自杀/已落子）→ 按弃行处理
                     kata_moves.append([current_color.upper(), 'pass'])
 
             # ---- 局面评估（落子后） ----

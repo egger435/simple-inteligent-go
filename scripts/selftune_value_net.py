@@ -83,8 +83,9 @@ def self_play_collect(kata, n_games, max_steps, sample_every):
     for g in range(n_games):
         board = boards.Board(BOARD_SIZE)
         current = 'b'
-        steps = []           # KataGo 格式落子记录 [[color, pos], ...]
-        sampled = []         # [(state, moves_snapshot), ...]
+        ko_pos = None          # 当前劫争禁着点
+        steps = []             # KataGo 格式落子记录 [[color, pos], ...]
+        sampled = []           # [(state, moves_snapshot), ...]
 
         for step in range(max_steps):
             # 落子前采样
@@ -97,7 +98,7 @@ def self_play_collect(kata, n_games, max_steps, sample_every):
                 top_k=TOP_K, max_depth=DEPTH,
                 use_own_value_net=True,
                 n_rollouts=N_ROLLOUTS, n_steps=N_STEPS,
-                verbose=False,
+                verbose=False, ko_pos=ko_pos,
             )
             move, value = minimax.search()
 
@@ -110,8 +111,13 @@ def self_play_collect(kata, n_games, max_steps, sample_every):
             if move == 'pass':
                 steps.append([current.upper(), 'pass'])
             else:
+                # 劫争禁着点防御（搜索正常时不会返回该点）
+                if ko_pos is not None and (move[0], move[1]) == ko_pos:
+                    steps.append([current.upper(), 'pass'])
+                    current = 'w' if current == 'b' else 'b'
+                    continue
                 try:
-                    board.play(move[0], move[1], current)
+                    ko_pos, _ = board.play(move[0], move[1], current)
                 except ValueError:
                     steps.append([current.upper(), 'pass'])
                     current = 'w' if current == 'b' else 'b'

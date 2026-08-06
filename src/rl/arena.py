@@ -49,7 +49,7 @@ class Arena:
 
     # ------------------------------------------------------------------
     def _predict_move(self, board: boards.Board, color: str,
-                      use_new: bool) -> int:
+                      use_new: bool, ko_pos=None) -> int:
         '''用指定模型预测一步棋，返回落子索引 (0~361)。
 
         贪心选择最高概率合法着（Arena 不需要温度，要测纯粹强度）。
@@ -60,6 +60,11 @@ class Arena:
         self._sg.model.eval()         # 训练后 model 可能在 train 模式
 
         full_probs = self._sg.predict_full_probs(board, color)
+
+        # 劫争禁着点屏蔽（禁止立即提回）
+        if ko_pos is not None:
+            full_probs = full_probs.copy()
+            full_probs[ko_pos[0] * BOARD_SIZE + ko_pos[1]] = 0.0
 
         # 降低 pass 概率（Arena 应尽量不走弃行）
         full_probs[PASS_LABEL] *= 0.01
@@ -75,6 +80,7 @@ class Arena:
             board = boards.Board(BOARD_SIZE)
             current_color = 'b'
             consecutive_pass = 0
+            ko_pos = None                # 当前劫争禁着点
             max_steps = 400
 
             for _ in range(max_steps):
@@ -85,7 +91,7 @@ class Arena:
 
                 try:
                     move_idx = self._predict_move(
-                        board, current_color, use_new,
+                        board, current_color, use_new, ko_pos=ko_pos,
                     )
                 except Exception:
                     return self._loser(current_color, new_is_black)
@@ -99,9 +105,9 @@ class Arena:
                     row = move_idx // BOARD_SIZE
                     col = move_idx % BOARD_SIZE
                     try:
-                        board.play(row, col, current_color)
+                        ko_pos, _ = board.play(row, col, current_color)
                     except ValueError:
-                        # 真正非法（自杀/劫）→ 弃行
+                        # 真正非法（自杀）→ 弃行
                         pass
 
                 current_color = 'w' if current_color == 'b' else 'b'

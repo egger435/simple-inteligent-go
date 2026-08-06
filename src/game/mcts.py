@@ -33,9 +33,10 @@ class MCTSNode:
 
     __slots__ = ('board', 'color', 'parent', 'move', 'prior',
                  'visit_count', 'total_value', 'children', 'is_terminal',
-                 'expanded')
+                 'expanded', 'ko_point')
 
-    def __init__(self, board, color, parent=None, move=None, prior=0.0):
+    def __init__(self, board, color, parent=None, move=None, prior=0.0,
+                 ko_point=None):
         self.board = board          # sgfmill Board
         self.color = color          # 该轮到谁走 'b'/'w'
         self.parent = parent
@@ -46,6 +47,7 @@ class MCTSNode:
         self.children = []
         self.is_terminal = False
         self.expanded = False
+        self.ko_point = ko_point    # 本节点禁着点（simple ko，轮到 color 走时不可落子）
 
     # ------------------------------------------------------------------
     @property
@@ -72,7 +74,7 @@ class MCTS:
                  simulations=None, c_puct=None, temperature=None,
                  expand_width=None, eval_batch_size=None,
                  use_own_value_net=None, verbose=None,
-                 visualize=False, vis_interval=0.5):
+                 visualize=False, vis_interval=0.5, ko_pos=None):
         from common import (
             MCTS_SIMULATIONS as _SIM, MCTS_C_PUCT as _C,
             MCTS_TEMPERATURE as _T, MCTS_VISUALIZE, MCTS_VIS_INTERVAL,
@@ -108,16 +110,18 @@ class MCTS:
         self.root_player = root_player
         self.opp_player = 'b' if root_player == 'w' else 'w'
 
-        # 重建根棋盘
+        # 重建根棋盘（回放真实落子，同时追踪劫争禁着点）
         root_board = boards.Board(BOARD_SIZE)
+        ko = None
         for color, pos_str in steps_list:
             if pos_str == 'pass':
                 continue
             from common import go_str_to_idx
             r, c = go_str_to_idx(pos_str, have_i=False)
-            root_board.play(r, c, color.lower())
+            ko, _ = root_board.play(r, c, color.lower())
 
-        self.root = MCTSNode(root_board, root_player)
+        self.root = MCTSNode(root_board, root_player,
+                             ko_point=ko_pos if ko_pos is not None else ko)
         self._evaluator_device = (
             next(self.va_predictor.model.parameters()).device
         )
@@ -181,15 +185,19 @@ class MCTS:
             if probs[idx] <= 0:
                 continue
             r, c = idx // BOARD_SIZE, idx % BOARD_SIZE
+            # 劫争：禁止立即提回（否则会无限循环提劫）
+            if node.ko_point is not None and (r, c) == node.ko_point:
+                continue
             try:
                 child_board = node.board.copy()
-                child_board.play(r, c, node.color)
+                ko_point, _ = child_board.play(r, c, node.color)
             except ValueError:
                 continue
             child_color = 'w' if node.color == 'b' else 'b'
             child = MCTSNode(
                 child_board, child_color,
                 parent=node, move=(r, c), prior=probs[idx],
+                ko_point=ko_point,
             )
             node.children.append(child)
             child_count += 1

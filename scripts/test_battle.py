@@ -66,7 +66,7 @@ def parse_args():
 
 
 # =====================================================================
-def ai_move(color, steps, board, params):
+def ai_move(color, steps, board, params, ko_pos=None):
     '''走一步棋，返回 (move_or_pass, value)。'''
     if params['algorithm'] == 'mcts':
         return search_move(
@@ -75,6 +75,7 @@ def ai_move(color, steps, board, params):
             use_own_value_net=params.get('use_own_value_net', True),
             simulations=params.get('simulations', 100),
             c_puct=params.get('c_puct', 1.4),
+            ko_pos=ko_pos,
             verbose=False,
         )
     else:
@@ -86,6 +87,7 @@ def ai_move(color, steps, board, params):
             n_steps=params.get('n_steps'),
             top_k=params['top_k'],
             max_depth=params['max_depth'],
+            ko_pos=ko_pos,
             verbose=False,
         )
 
@@ -96,6 +98,7 @@ def play_one_game(kata, left_params, right_params,
     board = boards.Board(BOARD_SIZE)
     steps = []
     current = 'b'
+    ko_pos = None                # 当前劫争禁着点
     left_color = 'b' if left_is_black else 'w'
     right_color = 'w' if left_is_black else 'b'
 
@@ -105,7 +108,7 @@ def play_one_game(kata, left_params, right_params,
         else:
             params, who = right_params, right_key
 
-        move, value = ai_move(current, steps, board, params)
+        move, value = ai_move(current, steps, board, params, ko_pos=ko_pos)
 
         # 打印对局进度
         print(f'  第{game_idx+1}场 | {who}方 | 第{step+1}手 | '
@@ -115,8 +118,13 @@ def play_one_game(kata, left_params, right_params,
         if move == 'pass':
             steps.append([current.upper(), 'pass'])
         else:
+            # 劫争禁着点防御（搜索正常时不会返回该点）
+            if ko_pos is not None and (move[0], move[1]) == ko_pos:
+                steps.append([current.upper(), 'pass'])
+                current = 'w' if current == 'b' else 'b'
+                continue
             try:
-                board.play(move[0], move[1], current)
+                ko_pos, _ = board.play(move[0], move[1], current)
             except ValueError:
                 steps.append([current.upper(), 'pass'])
                 current = 'w' if current == 'b' else 'b'

@@ -38,7 +38,12 @@ def vs_ai(go_player) -> None:
             go_player.back_state()
             continue
         else:
-            go_player.play_move_str(human_input)
+            try:
+                go_player.play_move_str(human_input)
+            except ValueError as e:
+                # 劫争禁着点 / 已有棋子等非法落子，重新输入
+                print(f'✗ {e}')
+                continue
             # 以用户坐标系统展示落子序列
             display_steps = []
             for color, pos_str in go_player.steps:

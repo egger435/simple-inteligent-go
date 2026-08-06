@@ -306,6 +306,7 @@ class GoBoardGUI:
                     verbose=cfg.get('mcts_verbose', False),
                     visualize=self._mcts_visualizing,
                     vis_interval=cfg.get('mcts_vis_interval', 0.5),
+                    ko_pos=self.go_player.ko_pos,
                 )
                 # 后台线程每步模拟后回调，更新 GUI 可见的快照
                 searcher.on_step = lambda snap: self._on_mcts_step(snap)
@@ -320,6 +321,7 @@ class GoBoardGUI:
                     top_k=cfg.get('top_k', 4),
                     max_depth=cfg.get('max_search_depth', 5),
                     verbose=False,
+                    ko_pos=self.go_player.ko_pos,
                 )
 
             best_move, best_value = searcher.search()
